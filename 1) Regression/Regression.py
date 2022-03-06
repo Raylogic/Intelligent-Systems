@@ -1,4 +1,3 @@
-from inspect import Attribute
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -325,8 +324,3 @@ def main():
 
 # MAIN 
 main()
-
-# Bibliography:
-# 1) Shi, A. (2020), "Polynomial Regression with Scikit learn: What You Should Know" (06/03/2022), Recovered from: https://towardsdatascience.com/polynomial-regression-with-scikit-learn-what-you-should-know-bed9d3296f2
-# 2) Ujhelyi, T. (2021), "Polynomial Regression in Python using scikit-learn (with a practical example)" (06/03/2022), Recovered from: https://data36.com/polynomial-regression-python-scikit-learn/
-
