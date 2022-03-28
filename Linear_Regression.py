@@ -48,6 +48,7 @@ def MSE(m, data, y):
 
     # Add current epoch MSE to GD error plot
     plot_errors.append(MSE)
+    return MSE
 
 # ---------------------------------------------------------------------------------------------------------------
 
@@ -83,43 +84,60 @@ def GD(m, data, y, a):
             acum = acum + error * data[j][i]
 
         # Update the parameter
-        new_m[i] = m[i] - a/len(data)*acum
+        new_m[i] = m[i] - a / len(data) * acum
 
     # Return the list of updated parameters
     return new_m
 
 # ---------------------------------------------------------------------------------------------------------------
 
-# Scale examples attributes thorugh mix-max normalization
+# Calculate the mean of an attribute
+# Args:
+#   1) column (list) --> List of attributes
+# Return:
+#   1) Mean
+
+def mean(data):
+    return sum(data)/len(data)
+
+# Calculate the standard deviation of an attribute
+# Args:
+#   1) column (list) --> List of attributes
+# Return:
+#   1) Standard Deviation
+
+def deviation(data):
+    return np.std(data)
+
+# ---------------------------------------------------------------------------------------------------------------
+
+# Scale examples attributes thorugh Standarization
 # Args:
 #   1) data (list) --> List of examples
 # Return:
-#   1) data (list) --> List of examples scaled
+#   1) data (list) --> List of scaled examples
 
 def scaling(data):
-    acum = 0
-
     # Transpose the dataset
     data = np.asarray(data).T.tolist()
 
     # Calculate the scaled attributes of each example
-    # Scale = (Value - Mean)/(Max - Min)
-    # It is assumed that Min = 0
     for i in range(1, len(data)):
 
         # Calculate the sum of all attributes values
         for j in range(len(data[i])):
-            acum = acum + data[i][j]
 
-        # Calculate the mean of the attributes values
-        mean = acum / len(data[i])
+            # Get the values of a dataset column
+            x_actual = [item[j] for item in data]
 
-        # Calculate the max value of the attributes values
-        maxval = max(data[i])
+            # Calculate the mean of the column
+            x_mean = mean(x_actual)
 
-        # Scale each attribute value with the formula
-        for j in range(len(data[i])):
-            data[i][j] = (data[i][j] - mean) / maxval
+            # Calculate the standard deviation of the column
+            x_std = deviation(x_actual)
+
+            # Perform the Standarization Scaling
+            data[i][j] = (data[i][j] - x_mean) / x_std
 
     # Return the scaled dataset to its original form
     return np.asarray(data).T.tolist()
@@ -170,7 +188,7 @@ def LinearRegression(m, data, y, a):
         # Calculate the new parameters and MSE
         old_m = list(m)
         m = GD(m, data, y, a)
-        MSE(m, data, y)
+        error = MSE(m, data, y)
 
         # New epoch values 
         # print("New parameters = {}".format(m))
@@ -180,11 +198,65 @@ def LinearRegression(m, data, y, a):
         if old_m == m or epochs == limit:
             # print("Data = {}".format(data))
             print("Parameters = {}".format(m))
+            print("MSE = {}".format(error))
             break
 
     # Plot the MSE graph
     plt.plot(plot_errors)
     plt.show()
+    return m
+
+# ---------------------------------------------------------------------------------------------------------------
+
+# Predict the values of the test examples
+# Args:
+#   1) m (list) --> List of parameters of each x
+#   2) x_test (list) --> List of examples
+# Return:
+#   1) y_pred (list) --> Prediction of examples
+
+def predict(m, data):
+    # List of predicted values
+    y_pred = []
+    
+    # Evaluate the test examples with the optimal paramaters
+    # Append the hypothesis result into the prediction list
+    for i in range(len(data)):
+        y = hyp(m, data[i])
+        y_pred.append(y)
+
+    # Return the hypothesis value
+    return y_pred
+
+# ---------------------------------------------------------------------------------------------------------------
+
+# Calculate the coefficient of determination of the model
+# Args:
+#   1) y_test (list) --> List of test examples
+#   2) y_pred (list) --> List of predicted examples
+# Return:
+#   1) R2 (number) --> Coefficient of determination
+
+def R2Coefficient(y_test, y_pred):
+    # Calculate the mean of y
+    y_mean = mean(y_test)
+
+    # Calculate the Sum of Square Residuals (SSR)
+    SSR = 0
+    for i in range(len(y_test)):
+        SSR = SSR + (y_test[i] - y_mean) ** 2
+    
+    # Calculate the Sum of Square Totals (SST)
+    SST = 0
+    for i in range(len(y_test)):
+        SST = SST + (y_test[i] - y_pred[i]) ** 2
+
+    # Calculate the Coefficient of Determination
+    R2 = 1 - (SSR / SST)
+    print("R2 = {}".format(R2))
+
+    # Return the Coefficient of Determination
+    return R2
 
 # ---------------------------------------------------------------------------------------------------------------
 
@@ -195,132 +267,54 @@ def LinearRegression(m, data, y, a):
 # Return:
 #   1) Linear Regression of the data
 
-def HandLinearRegression(df_x, df_y):
+def PreProcessing(df_x, df_y):
     # Transform the attributes and predictors from pandas dataframes into lists
     a = 0.01
-    m = [0,0,0,0]
+    m = [0,0,0,0,0,0]
     data = pd.DataFrame(df_x).to_numpy().tolist()
     list_y = pd.DataFrame(df_y).to_numpy().tolist()
 
-    # Flat the predictors list of list
+    # Flat the predictors list
     y = []
     for i in range(len(list_y)):
         for j in list_y[i]:
             y.append(j)
 
-    data = bias(data)
-    data = scaling(data)
-    LinearRegression(m, data, y, a)
+    # Split the data into training and test examples
+    x_train = data[:-150]
+    x_test = data[-150:]
+    y_train = y[:-150]
+    y_test = y[-150:]
+
+    # Add the bias to the examples
+    data = bias(x_train)
+
+    # Scale the examples
+    data = scaling(x_train)
+
+    # Perform the Linear Regression
+    m = LinearRegression(m, data, y_train, a)  
+
+    # Predict the test examples with the optimal parameters
+    y_pred = predict(m, x_test)
+
+    # Calculate the coefficient of determination
+    r2 = R2Coefficient(y_test, y_pred)
 
 # ---------------------------------------------------------------------------------------------------------------
 
-# Preprocess the data to use it on a sci-kit Polynomial Regression with linspace testing
-# Args:
-#   1) df_x (list) --> List of attributes
-#   2) df_y (list) --> List of predictors
-# Return:
-#   1) Polynomial Regression of the data
-#   2) Plot of each parameter
-
-def PolynomialRegressionPrediction(degree, df_xi, df_y, attribute):
-    from sklearn.preprocessing import PolynomialFeatures
-    from sklearn.pipeline import make_pipeline
-    from sklearn.linear_model import LinearRegression
-    from sklearn.model_selection import train_test_split
-    from sklearn.metrics import mean_squared_error
-
-    # Declare the polynomial regression paramteres
-    poly = PolynomialFeatures(degree, include_bias=False)
-
-    # Transform the attributes to fit the polynomial form
-    poly_features = poly.fit_transform(df_xi)
-
-    # Generate the training and test sets
-    x_train, x_test, y_train, y_test = train_test_split(poly_features, df_y, test_size=0.3, random_state=42)
-
-    # Declare the polynomial regression
-    poly_model = LinearRegression()
-
-    # Perform the Polynomial Regression
-    poly_model.fit(x_train, y_train)
-
-    # Sort the attributes from the test set
-    x_test = sorted(x_test, key = lambda x: x[0])
-
-    # Predict the y-values of the test set
-    poly_prediction = poly_model.predict(x_test)
-
-    # Calculate the MSE
-    poly_MSE = np.sqrt(mean_squared_error(y_test, poly_prediction))
-
-    # Print the MSE and regression final parameters
-    print(poly_MSE)
-    print(poly_model.coef_)
-
-    # Flat the predictors list of list of the test set
-    Y_pred = []
-    for i in range(len(poly_prediction)):
-        for j in poly_prediction[i]:
-            Y_pred.append(j)
-
-    # Flat the attributes list of list of the test set
-    x_test_graph = []
-    for i in range(len(x_test)):
-        x_test_graph.append(x_test[i][0])
-
-    # Plot the polynomial regression
-    plt.figure(figsize=(12,7))
-
-    # Plot the training set examples
-    plt.scatter(x_train[:,0], y_train)
-
-    # Plot the line of the test set examples
-    plt.plot(x_test_graph, Y_pred, color='blue', linewidth = 2)
-    
-    # Plot decorations
-    plt.xlabel(attribute)
-    plt.ylabel("Comments")
-    plt.show()
-
-# ---------------------------------------------------------------------------------------------------------------
-
-# Preprocess the data to use it on a sci-kit Polynomial Regression with linspace testing
-# Args:
-#   1) df_x (list) --> List of attributes
-#   2) df_y (list) --> List of predictors
-# Return:
-#   1) Polynomial Regression of the data
-
-def ScikitPolynomialRegression(df_x, df_y):
-    degree = int(input("Degree = "))
-
-    # Polynomial regression Seconds-Comments
-    df_x1 = df_x[["seconds"]]
-    PolynomialRegressionPrediction(degree, df_x1, df_y, "Seconds")
-
-    # Polynomial regression Views-Comments
-    df_x2 = df_x[["views"]]
-    PolynomialRegressionPrediction(degree, df_x2, df_y, "Views")
-
-    # Polynomial regression Likes-Comments
-    df_x3 = df_x[["likes"]]
-    PolynomialRegressionPrediction(degree, df_x3, df_y, "Likes")
-
-# ---------------------------------------------------------------------------------------------------------------
-
-# Perform Regression on Youtube Statistics
+# Perform Regression on Pokemon Stats
 def main():
     # Load dataset
-    columns = ["id", "seconds", "views", "likes", "comments"]
-    df = pd.read_csv('MrBeast.csv')
+    columns = ["name", "hp", "attack", "defense", "sp_attack", "sp_defense", "speed"]
+    df = pd.read_csv('Pokemon.csv')
 
     # Define attributes and predictors
-    df_x = df[["seconds","views","likes"]]
-    df_y = df[["comments"]]
+    df_x = df[["attack", "defense", "sp_attack", "sp_defense", "speed"]]
+    df_y = df[["hp"]]
 
-    # Regressions
-    HandLinearRegression(df_x, df_y)
-    ScikitPolynomialRegression(df_x, df_y)
+    # Prepare the data for the regression
+    PreProcessing(df_x, df_y)
 
 # MAIN 
 main()
