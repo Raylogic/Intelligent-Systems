@@ -2,4 +2,8 @@ pip install -U scikit-learn
 pip install pandas
 pip install numpy
 pip install seaborn
+<<<<<<< HEAD
 pip install matplotlib
+=======
+pip install matplotlib
+>>>>>>> 71a9713354fd353b5a67409d40b19976a3537254
