@@ -1,4 +1,4 @@
-# How to run Regression.py 
+# How to run all programs
 
 1) Download the folder into your computer
 
